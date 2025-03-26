@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>QOF Dashboard 2024/25 (Extended)</title>
+
+  <!-- Include Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #333;
+    }
+    .header {
+      background-color: #005EB8; /* NHS Blue */
+      padding: 1rem;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    .practice-filter {
+      font-size: 1rem;
+      padding: 0.3rem;
+      border-radius: 4px;
+      border: none;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 1rem auto;
+      padding: 1rem;
+    }
+    .nav-links {
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+    }
+    .nav-links button {
+      background-color: #005EB8;
+      color: #FFF;
+      border: none;
+      padding: 0.5rem 1rem;
+      margin-right: 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .nav-links button:hover {
+      background-color: #0072CE;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: white;
+      border-radius: 4px;
+      padding: 1rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: #005EB8;
+      margin-bottom: 0.5rem;
+    }
+    .card p {
+      font-size: 1.4rem;
+      font-weight: bold;
+      margin: 0;
+      color: #231F20;
+    }
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    .chart-box {
+      background: white;
+      border-radius: 4px;
+      padding: 1rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .chart-box h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: #005EB8;
+      margin-bottom: 0.5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      background: white;
+    }
+    table thead {
+      background: #E8EDEE; /* NHS Pale Grey */
+    }
+    table thead th {
+      color: #005EB8;
+      padding: 0.75rem;
+      text-align: left;
+    }
+    table tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+    table td {
+      padding: 0.75rem;
+    }
+
+    /* Section toggling (pages) */
+    .section {
+      display: none; /* Hidden by default; toggled via JS */
+    }
+    .section.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <div class="header">
+    <h1>QOF Dashboard 2024/25 (Extended)</h1>
+    <!-- PRACTICE FILTER DROPDOWN -->
+    <select class="practice-filter" id="practiceSelect">
+      <option value="all">All Practices</option>
+      <!-- We'll populate practice names dynamically -->
+    </select>
+  </div>
+
+  <div class="container">
+    <!-- NAVIGATION BUTTONS -->
+    <div class="nav-links">
+      <button onclick="showPage('mainDashboardSection')">Main Dashboard</button>
+      <button onclick="showPage('quickWinsSection')">Detailed Quick Wins</button>
+      <button onclick="showPage('localHelpSection')">Local Help for QOF</button>
+    </div>
+
+    <!-- MAIN DASHBOARD SECTION -->
+    <div id="mainDashboardSection" class="section active">
+      <!-- TOP CARDS -->
+      <div class="cards" id="cardsContainer"></div>
+
+      <!-- CHARTS -->
+      <div class="chart-row">
+        <!-- Chart 1: Income by Practice -->
+        <div class="chart-box">
+          <h3>Income</h3>
+          <canvas id="incomeChart"></canvas>
+        </div>
+        <!-- Chart 2: Performance by Practice -->
+        <div class="chart-box">
+          <h3>Performance (%)</h3>
+          <canvas id="performanceChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-row">
+        <!-- Chart 3: Missed Income -->
+        <div class="chart-box">
+          <h3>Missed Income (£)</h3>
+          <canvas id="missedChart"></canvas>
+        </div>
+        <!-- Chart 4: Indicator Progress -->
+        <div class="chart-box">
+          <h3>Indicator Progress</h3>
+          <canvas id="indicatorChart"></canvas>
+        </div>
+      </div>
+
+      <!-- TABLE: Detailed Data -->
+      <h2>Practice-Level QOF Summary</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Practice</th>
+            <th>Income (£)</th>
+            <th>Performance (%)</th>
+            <th>Missed Income (£)</th>
+            <th>Indicator Completion (%)</th>
+          </tr>
+        </thead>
+        <tbody id="practiceTableBody"></tbody>
+      </table>
+    </div><!-- /mainDashboardSection -->
+
+    <!-- QUICK WINS SECTION -->
+    <div id="quickWinsSection" class="section">
+      <h2>Detailed Quick Wins: BP Example</h2>
+      <p>
+        This page demonstrates how many patients are just above a certain BP threshold 
+        and how a simple intervention could include them in performance, boosting 
+        the practice's QOF income.
+      </p>
+      <p>
+        Suppose the threshold is <strong>140/90 mmHg</strong> for an indicator. 
+        The table below shows hypothetical data for borderline BP patients 
+        who could have been improved with a follow-up or medication review.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Practice</th>
+            <th># Borderline Patients</th>
+            <th>Potential Income Gain (£)</th>
+            <th>Intervention Needed</th>
+          </tr>
+        </thead>
+        <tbody id="bpQuickWinsBody"></tbody>
+      </table>
+      <p>
+        <em>Note:</em> All values here are example dummy data. In practice, you'd 
+        run a search for patients who have a recent BP reading slightly above 
+        140/90 to see how many might be easily lowered below threshold.
+      </p>
+    </div><!-- /quickWinsSection -->
+
+    <!-- LOCAL HELP SECTION -->
+    <div id="localHelpSection" class="section">
+      <h2>Local Help for QOF</h2>
+      <p>
+        Below are some dummy local organisations that can assist practices in 
+        meeting QOF indicators, e.g. helping with blood pressure checks, 
+        reviews, and other routine tasks.
+      </p>
+
+      <h3>Community BP Support</h3>
+      <p>
+        A small local team of healthcare assistants who can perform 
+        home visits or community-centre sessions for blood pressure 
+        checks and simple reviews. 
+        <strong>Contact:</strong> (01234) 567 890
+      </p>
+
+      <h3>ReviewPlus</h3>
+      <p>
+        Offers on-site practice support for targeted reviews (e.g. 
+        diabetes foot checks, annual COPD reviews). 
+        They charge a flat sessional fee per day. 
+        <strong>Contact:</strong> reviews@reviewplus.org
+      </p>
+
+      <h3>YourHealth (NHS Health Checks)</h3>
+      <p>
+        <strong>YourHealth</strong> provides NHS Health Checks to eligible 
+        patients, capturing key data such as <em>blood pressure</em>, BMI, 
+        and lifestyle factors. By booking them to perform these checks, 
+        practices collect the needed QOF data (e.g. BP readings) and also 
+        fulfill NHS Health Check requirements. 
+      </p>
+      <p>
+        Practice Income Structure (YourHealth take no cut from NHS Health Check income):
+      </p>
+      <ul>
+        <li><strong>£37.50 per patient</strong> in IMD deciles 3–10</li>
+        <li><strong>£42.50 per patient</strong> in IMD deciles 1–2 (higher-need areas)</li>
+      </ul>
+      <p>
+        This arrangement can <em>increase practice income</em> by 
+        ensuring more completed checks, capturing more 
+        up-to-date data, and improving QOF performance overall.  
+        <strong>Contact:</strong> checks@yourhealth.uk
+      </p>
+    </div><!-- /localHelpSection -->
+
+  </div><!-- /container -->
+
+  <!-- CHART.JS SCRIPTS & DATA LOGIC -->
+  <script>
+    // Dummy data for 9 practices
+    // We'll add an ID property for easy referencing
+    const practices = [
+      { id: "A", name: "Practice A", income: 150000, performance: 81, missed: 20000, indicatorProg: 70 },
+      { id: "B", name: "Practice B", income: 130000, performance: 75, missed: 15000, indicatorProg: 64 },
+      { id: "C", name: "Practice C", income: 110000, performance: 72, missed: 18000, indicatorProg: 58 },
+      { id: "D", name: "Practice D", income: 140000, performance: 79, missed: 25000, indicatorProg: 66 },
+      { id: "E", name: "Practice E", income: 120000, performance: 69, missed: 22000, indicatorProg: 55 },
+      { id: "F", name: "Practice F", income: 135000, performance: 82, missed: 10000, indicatorProg: 74 },
+      { id: "G", name: "Practice G", income: 125000, performance: 77, missed: 12000, indicatorProg: 65 },
+      { id: "H", name: "Practice H", income: 130000, performance: 76, missed: 15000, indicatorProg: 61 },
+      { id: "I", name: "Practice I", income: 125000, performance: 80, missed: 13000, indicatorProg: 68 },
+    ];
+
+    // For Quick Wins: hypothetical borderline patients for each practice
+    const borderlineBPData = [
+      // We'll align them by practice ID
+      { id: "A", borderlineCount: 12, potentialIncome: 3000, intervention: "Medication review" },
+      { id: "B", borderlineCount: 10, potentialIncome: 2500, intervention: "Follow-up BP check" },
+      { id: "C", borderlineCount: 8,  potentialIncome: 2000, intervention: "Lifestyle + follow-up" },
+      { id: "D", borderlineCount: 15, potentialIncome: 4000, intervention: "Add-on therapy" },
+      { id: "E", borderlineCount: 9,  potentialIncome: 2100, intervention: "Medication review" },
+      { id: "F", borderlineCount: 5,  potentialIncome: 1200, intervention: "Quick recheck" },
+      { id: "G", borderlineCount: 11, potentialIncome: 2700, intervention: "Follow-up BP check" },
+      { id: "H", borderlineCount: 6,  potentialIncome: 1600, intervention: "Lifestyle + follow-up" },
+      { id: "I", borderlineCount: 7,  potentialIncome: 1900, intervention: "Medication review" },
+    ];
+
+    // Global references to Chart.js objects
+    let incomeChart, performanceChart, missedChart, indicatorChart;
+
+    // On page load
+    window.addEventListener('DOMContentLoaded', () => {
+      // Populate practice dropdown
+      const practiceSelect = document.getElementById("practiceSelect");
+      practices.forEach(pr => {
+        const opt = document.createElement("option");
+        opt.value = pr.id;
+        opt.textContent = pr.name;
+        practiceSelect.appendChild(opt);
+      });
+
+      // Build all charts
+      buildAllCharts();
+
+      // Build table & cards for "All Practices" by default
+      updateDashboard("all");
+
+      // On change of dropdown, update dashboard
+      practiceSelect.addEventListener("change", (e) => {
+        const val = e.target.value; // e.g. "all" or "A"
+        updateDashboard(val);
+      });
+
+      // Build QuickWins table
+      buildQuickWinsTable();
+    });
+
+    // Build QuickWins Table
+    function buildQuickWinsTable() {
+      const tb = document.getElementById("bpQuickWinsBody");
+      borderlineBPData.forEach(bd => {
+        const p = practices.find(x => x.id === bd.id);
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${p.name}</td>
+          <td>${bd.borderlineCount}</td>
+          <td>£${bd.potentialIncome.toLocaleString()}</td>
+          <td>${bd.intervention}</td>
+        `;
+        tb.appendChild(row);
+      });
+    }
+
+    // Build initial Chart.js objects
+    function buildAllCharts() {
+      // Income Chart
+      incomeChart = new Chart(document.getElementById("incomeChart"), {
+        type: "bar",
+        data: {
+          labels: [],
+          datasets: [{
+            label: "Income (£)",
+            data: [],
+            backgroundColor: "#005EB8"
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+
+      // Performance Chart
+      performanceChart = new Chart(document.getElementById("performanceChart"), {
+        type: "bar",
+        data: {
+          labels: [],
+          datasets: [{
+            label: "Performance (%)",
+            data: [],
+            backgroundColor: "#0072CE"
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true, max: 100 }
+          }
+        }
+      });
+
+      // Missed Income Chart
+      missedChart = new Chart(document.getElementById("missedChart"), {
+        type: "bar",
+        data: {
+          labels: [],
+          datasets: [{
+            label: "Missed Income (£)",
+            data: [],
+            backgroundColor: "#FF8C00"
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+
+      // Indicator Chart (doughnut)
+      indicatorChart = new Chart(document.getElementById("indicatorChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Clinical", "Public Health", "QI", "Add. Services"],
+          datasets: [{
+            label: "Indicator Progress",
+            data: [],
+            backgroundColor: ["#005EB8", "#0072CE", "#768692", "#00A499"]
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: "bottom"
+            }
+          }
+        }
+      });
+    }
+
+    // Update entire dashboard when a practice changes
+    function updateDashboard(practiceId) {
+      let filteredData = [];
+
+      if (practiceId === "all") {
+        // Aggregate all
+        filteredData = [...practices];
+      } else {
+        // Single practice
+        const single = practices.find(p => p.id === practiceId);
+        filteredData.push(single);
+      }
+
+      // Update cards
+      updateCards(filteredData, practiceId === "all");
+
+      // Update table
+      updateTable(filteredData, practiceId === "all");
+
+      // Update charts
+      updateCharts(filteredData, practiceId === "all");
+    }
+
+    function updateCards(filteredData, isAll) {
+      const cardsContainer = document.getElementById("cardsContainer");
+      cardsContainer.innerHTML = ""; // clear
+
+      if (isAll) {
+        // Summation/averages
+        let totalIncome = 0;
+        let totalPerformance = 0;
+        let totalMissed = 0;
+        let totalIndicator = 0;
+
+        filteredData.forEach(p => {
+          totalIncome += p.income;
+          totalPerformance += p.performance;
+          totalMissed += p.missed;
+          totalIndicator += p.indicatorProg;
+        });
+        const avgPerf = totalPerformance / filteredData.length;
+        const avgInd = totalIndicator / filteredData.length;
+
+        // Build 4 cards
+        cardsContainer.appendChild(buildCard("Total Income (All)", `£${totalIncome.toLocaleString()}`));
+        cardsContainer.appendChild(buildCard("Avg. Performance", `${avgPerf.toFixed(0)}%`));
+        cardsContainer.appendChild(buildCard("Total Missed Income", `£${totalMissed.toLocaleString()}`));
+        cardsContainer.appendChild(buildCard("Indicators Complete (Avg.)", `${avgInd.toFixed(0)}%`));
+
+      } else {
+        // Single practice
+        const p = filteredData[0];
+        cardsContainer.appendChild(buildCard(`Income (${p.name})`, `£${p.income.toLocaleString()}`));
+        cardsContainer.appendChild(buildCard(`Performance (${p.name})`, `${p.performance}%`));
+        cardsContainer.appendChild(buildCard(`Missed Income (${p.name})`, `£${p.missed.toLocaleString()}`));
+        cardsContainer.appendChild(buildCard(`Indicators Complete (${p.name})`, `${p.indicatorProg}%`));
+      }
+    }
+
+    function buildCard(title, value) {
+      const card = document.createElement("div");
+      card.classList.add("card");
+      card.innerHTML = `
+        <h2>${title}</h2>
+        <p>${value}</p>
+      `;
+      return card;
+    }
+
+    function updateTable(filteredData, isAll) {
+      const tb = document.getElementById("practiceTableBody");
+      tb.innerHTML = ""; // clear
+
+      if (isAll) {
+        // Show all rows
+        practices.forEach(pr => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${pr.name}</td>
+            <td>£${pr.income.toLocaleString()}</td>
+            <td>${pr.performance}%</td>
+            <td>£${pr.missed.toLocaleString()}</td>
+            <td>${pr.indicatorProg}%</td>
+          `;
+          tb.appendChild(row);
+        });
+      } else {
+        // Single row
+        const p = filteredData[0];
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${p.name}</td>
+          <td>£${p.income.toLocaleString()}</td>
+          <td>${p.performance}%</td>
+          <td>£${p.missed.toLocaleString()}</td>
+          <td>${p.indicatorProg}%</td>
+        `;
+        tb.appendChild(row);
+      }
+    }
+
+    function updateCharts(filteredData, isAll) {
+      // For the bar charts (Income, Performance, Missed) we want either multiple labels (all) or single
+      let labels = [];
+      let incomeData = [];
+      let perfData = [];
+      let missedData = [];
+      let indicData = [];
+
+      if (isAll) {
+        // many data points
+        labels = filteredData.map(p => p.name);
+        incomeData = filteredData.map(p => p.income);
+        perfData = filteredData.map(p => p.performance);
+        missedData = filteredData.map(p => p.missed);
+        // For the doughnut, let's do the average
+        const avgInd = filteredData.reduce((sum, p) => sum + p.indicatorProg, 0) / filteredData.length;
+        // We'll just fill the doughnut data with that average or replicate something
+        indicData = [avgInd, avgInd, avgInd, avgInd]; 
+      } else {
+        // single practice
+        const p = filteredData[0];
+        labels.push(p.name);
+        incomeData.push(p.income);
+        perfData.push(p.performance);
+        missedData.push(p.missed);
+        // For doughnut, replicate practice's indicator
+        indicData = [p.indicatorProg, p.indicatorProg, p.indicatorProg, p.indicatorProg];
+      }
+
+      // Update data for each chart
+      // 1. Income
+      incomeChart.data.labels = labels;
+      incomeChart.data.datasets[0].data = incomeData;
+      incomeChart.update();
+
+      // 2. Performance
+      performanceChart.data.labels = labels;
+      performanceChart.data.datasets[0].data = perfData;
+      performanceChart.update();
+
+      // 3. Missed
+      missedChart.data.labels = labels;
+      missedChart.data.datasets[0].data = missedData;
+      missedChart.update();
+
+      // 4. Indicator Chart
+      indicatorChart.data.datasets[0].data = indicData;
+      indicatorChart.update();
+    }
+
+    // Show/hide "pages" (sections)
+    function showPage(sectionId) {
+      const sections = document.querySelectorAll(".section");
+      sections.forEach(s => {
+        if (s.id === sectionId) s.classList.add("active");
+        else s.classList.remove("active");
+      });
+    }
+  </script>
+
+</body>
+</html>
